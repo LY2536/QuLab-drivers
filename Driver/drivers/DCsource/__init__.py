@@ -1,5 +1,5 @@
 import logging
-from qulab import (BaseDriver, QInteger, QOption, QReal, QVector)
+from ..BaseDriver import (BaseDriver, QInteger, QOption, QReal, QVector)
 
 from .VoltageSettingCore import (CalculateDValue, SetChannelNum, SetDefaultIP,
                                  SetDValue)
@@ -13,12 +13,14 @@ class Driver(BaseDriver):
         QReal('Offset', value=0, unit='V', ch=1),
             ]
 
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        ip = kw.get('addr')
-        self.ip = ip
-        SetDefaultIP(ip)
-        SetChannelNum(0, 0)
+    def __init__(self, addr, **kw):
+        '''
+        addr: ip, e.g. '192.168.1.6'
+        '''
+        super().__init__(addr, **kw)
+
+    def performOpen(self):
+        SetDefaultIP(self.addr)
 
     def setVolt(self, volt, ch=1):
         log.info(f'Set volt of Channel {ch} to {volt}')

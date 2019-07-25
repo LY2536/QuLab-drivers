@@ -1,5 +1,5 @@
 import numpy as np
-from ..base import visaDriver, QInteger, QOption, QReal
+from ..BaseDriver import visaDriver, QInteger, QOption, QReal
 
 
 class Driver(visaDriver):
@@ -81,6 +81,9 @@ class Driver(visaDriver):
         else:
             super(Driver, self).performSetValue(quant, value, **kw)
     '''
+    def performOpen(self):
+        super().performOpen()
+        self.pna_select(ch=1)
 
     def performGetValue(self, quant, **kw):
         get_vector_methods = {
@@ -187,7 +190,7 @@ class Driver(visaDriver):
             cmd = 'CALC%d:X?' % ch
             self.write(':FORM:DATA REAL,32')
             data = self.query_binary_values(cmd, is_big_endian=True)
-            self.write('FORMAT ASCII')
+            # self.write('FORMAT ASCII')
             return np.asarray(data)
         if self.model in ['E8363B', 'N5232A']:
             freq_star = self.getValue('Frequency start', ch=1)

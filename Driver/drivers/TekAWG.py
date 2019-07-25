@@ -1,6 +1,6 @@
 import numpy as np
 
-from ..base import visaDriver, QList, QOption, QReal
+from ..BaseDriver import visaDriver, QList, QOption, QReal
 
 
 class Driver(visaDriver):

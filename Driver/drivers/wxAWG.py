@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-from ..base import visaDriver, QInteger, QOption, QReal
+from ..BaseDriver import visaDriver, QInteger, QOption, QReal
 
 
 class Driver(visaDriver):
