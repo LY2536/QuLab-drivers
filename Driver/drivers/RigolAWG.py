@@ -15,9 +15,11 @@ class Driver(visaDriver):
 
         # Set the waveform of the specified channel to DC with the specified offset.
         QReal('Offset',
+              value=0,
               unit='VDC',
-              set_cmd=':SOUR1:APPL:DC 1,1, %(value).8e%(unit)s',
-              get_cmd=':VOLT?'),
+              ch=1,
+              set_cmd=':SOUR%(ch)d:APPL:DC 1,1, %(value).8e%(unit)s',
+              get_cmd=''),
 
         # QOption('Output',
         #   set_cmd=':OUTP %(option)s', options=[('OFF', 'OFF'), ('ON', 'ON')]),
