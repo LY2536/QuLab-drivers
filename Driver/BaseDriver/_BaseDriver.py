@@ -99,18 +99,19 @@ class visaDriver(BaseDriver):
     error_command = 'SYST:ERR?'
     """The SCPI command to query errors."""
 
-    def __init__(self, addr=None, visa_backends='@ni', timeout=10, **kw):
+    def __init__(self, addr=None, timeout=10, visa_backend='@ni', **kw):
         super(visaDriver, self).__init__(addr, timeout, **kw)
-        self.rm = visa.ResourceManager(visa_backends)
+        self.visa_backend='@ni'
 
     def __repr__(self):
         return 'visaDriver(addr=%s,model=%s)' % (self.addr,self.model)
 
-    def performOpen(self):
+    def performOpen(self, **kw):
         try:
             self.handle.open()
         except:
-            self.handle = self.rm.open_resource(self.addr)
+            rm = visa.ResourceManager(self.visa_backend)
+            self.handle = rm.open_resource(self.addr)
         self.handle.timeout = self.timeout * 1000
         try:
             IDN = self.handle.query("*IDN?").split(',')
@@ -121,7 +122,7 @@ class visaDriver(BaseDriver):
         except:
             raise Error('query IDN error!')
 
-    def performClose(self):
+    def performClose(self, **kw):
         self.handle.close()
 
     def performSetValue(self, quant, value, **kw):
