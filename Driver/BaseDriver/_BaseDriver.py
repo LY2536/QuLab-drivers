@@ -99,6 +99,7 @@ class visaDriver(BaseDriver):
     error_command = 'SYST:ERR?'
     """The SCPI command to query errors."""
 
+
     def __init__(self, addr=None, timeout=10, visa_backend='@ni', **kw):
         super(visaDriver, self).__init__(addr, timeout, **kw)
         self.visa_backend='@ni'
