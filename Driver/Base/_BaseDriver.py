@@ -3,6 +3,7 @@ import copy
 import logging
 import numpy as np
 import visa
+import struct
 
 from ._quant import QReal, QInteger, QString, QOption, QBool, QVector, QList, newcfg
 
@@ -18,8 +19,8 @@ class BaseDriver(object):
 
     quants = []
 
-    CHs=[]
-    '''Channels list'''
+    CHs=[1,2,3,4]
+    '''Channels list, default is 4 channels'''
 
     def __init__(self, addr=None, timeout=3, **kw):
         self.addr = addr
@@ -34,23 +35,30 @@ class BaseDriver(object):
     def __repr__(self):
         return 'Driver(addr=%s,model=%s)' % (self.addr,self.model)
 
+    def __del__(self):
+        self.close()
+
     def newcfg(self):
         self.config = newcfg(self.quants, self.CHs)
         log.info('new config!')
 
-    def set(self,**cfg):
+    def getcfg(self):
+        return self.config
+
+    def set(self, cfg={}, **kw):
+        assert isinstance(cfg,dict)
+        cfg.update(**kw)
         for key in cfg.keys():
             if isinstance(cfg[key],dict):
                 self.setValue(key, **cfg[key])
             else:
                 self.setValue(key, cfg[key])
-        return self
 
     def performOpen(self,**kw):
-        pass
+        log.info(f'Open Instrument {self.model}@{self.addr}')
 
     def performClose(self,**kw):
-        pass
+        log.info(f'Close Instrument {self.model}@{self.addr}')
 
     def open(self, **kw):
         self.performOpen(**kw)
@@ -71,7 +79,6 @@ class BaseDriver(object):
             _kw.update(value=value,**kw)
             self.performSetValue(quant, **_kw)
             self.config[name][_kw.pop('ch')].update(_kw) # update config
-            return self
         else:
             raise Error('No such Quantity!')
 
@@ -100,7 +107,7 @@ class visaDriver(BaseDriver):
     """The SCPI command to query errors."""
 
 
-    def __init__(self, addr=None, timeout=10, visa_backend='@ni', **kw):
+    def __init__(self, addr=None, timeout=3, visa_backend='@ni', **kw):
         super(visaDriver, self).__init__(addr, timeout, **kw)
         self.visa_backend='@ni'
 
@@ -120,11 +127,13 @@ class visaDriver(BaseDriver):
             model = IDN[1].strip()
             version = IDN[3].strip()
             self.model = model
+            log.info(f'Open Instrument {self.model}@{self.addr}')
         except:
             raise Error('query IDN error!')
 
     def performClose(self, **kw):
         self.handle.close()
+        log.info(f'Close Instrument {self.model}@{self.addr}')
 
     def performSetValue(self, quant, value, **kw):
         quant.set(self,value,**kw)
