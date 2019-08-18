@@ -4,6 +4,7 @@ sys.path.append(r'C:\Program Files (x86)\Keysight\SD1\Libraries\Python')
 import keysightSD1
 
 import numpy as np
+import re
 import logging
 from qulab.Driver import BaseDriver, QOption, QReal, QList, QInteger
 
@@ -92,8 +93,6 @@ class Driver(BaseDriver):
         moduleID = self.handle.openWithSlot(self.model, CHASSIS, SLOT)
         if moduleID < 0:
         	print("Module open error:", moduleID)
-        except Exception:
-            log.exception(Exception)
 
     def _parse_addr(self,addr):
         re_addr = re.compile(
