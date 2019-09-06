@@ -4,10 +4,11 @@ import logging
 import numpy as np
 import visa
 import struct
+from datetime import datetime
 
-from ._quant import QReal, QInteger, QString, QOption, QBool, QVector, QList, newcfg
+from .quant import QReal, QInteger, QString, QOption, QBool, QVector, QList, newcfg
 
-log = logging.getLogger('qulab.driver')
+log = logging.getLogger('qulab.Driver')
 __all__ = [
     'BaseDriver', 'visaDriver'
 ]
@@ -38,6 +39,13 @@ class BaseDriver(object):
     def __del__(self):
         self.close()
 
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.close()
+
     def newcfg(self):
         self.config = newcfg(self.quants, self.CHs)
         log.info('new config!')
@@ -48,11 +56,11 @@ class BaseDriver(object):
     def set(self, cfg={}, **kw):
         assert isinstance(cfg,dict)
         cfg.update(**kw)
-        for key in cfg.keys():
-            if isinstance(cfg[key],dict):
-                self.setValue(key, **cfg[key])
+        for key, value in cfg.items():
+            if isinstance(value,dict):
+                self.setValue(key, **value)
             else:
-                self.setValue(key, cfg[key])
+                self.setValue(key, value)
 
     def performOpen(self,**kw):
         pass
@@ -62,41 +70,48 @@ class BaseDriver(object):
 
     def open(self, **kw):
         self.performOpen(**kw)
-        log.info(f'Open Instrument {self.model}@{self.addr}')
+        log.info(f'{datetime.now()}    Open Instrument {self.model}@{self.addr}')
 
     def close(self, **kw):
         self.performClose(**kw)
-        log.info(f'Close Instrument {self.model}@{self.addr}')
+        log.info(f'{datetime.now()}    Close Instrument {self.model}@{self.addr}')
+
+    def performOPC(self):
+        return 1
 
     def performSetValue(self, quant, value, **kw):
-        pass
+        if quant.set_cmd is not '':
+            quant.set(self,value,**kw)
+        else:
+            pass
 
     def performGetValue(self, quant, **kw):
-        return self.config[quant.name][kw['ch']]['value']
+        if quant.get_cmd is not '':
+            return quant.get(self,**kw)
+        else:
+            return self.config[quant.name][kw['ch']]['value']
 
     def setValue(self, name, value, **kw):
-        if name in self.quantities:
-            quant=self.quantities[name]
-            _kw=copy.deepcopy(quant.default)
-            _kw.update(value=value,**kw)
-            self.performSetValue(quant, **_kw)
-            log.info('Set CH-%s Value: %s --> %s %s' % (_kw.get('ch'),name,value,_kw.get('unit')))
-            self.config[name][_kw.pop('ch')].update(_kw) # update config
-        else:
-            raise Error('No such Quantity!')
+        assert name in self.quantities
+        quant=self.quantities[name]
+        _kw=copy.deepcopy(quant.default)
+        _kw.update(value=value,**kw)
+        self.performSetValue(quant, **_kw)
+        log.info('%s    Set Value of CH-%s: %s --> %s %s' % (datetime.now(),_kw.get('ch'),name,value,_kw.get('unit')))
+        self.config[name][_kw.pop('ch')].update(_kw) # update config
+        opc=self.performOPC()
+        return opc
 
     def getValue(self, name, **kw):
-        if name in self.quantities:
-            quant=self.quantities[name]
-            _kw=copy.deepcopy(quant.default)
-            _kw.update(**kw)
-            value = self.performGetValue(quant, **_kw)
-            _kw.update(value=value)
-            log.info('Get CH-%s Value: %s --> %s %s' % (_kw.get('ch'),name,value,_kw.get('unit')))
-            self.config[name][_kw.pop('ch')].update(_kw) # update config
-            return value
-        else:
-            raise Error('No such Quantity!')
+        assert name in self.quantities
+        quant=self.quantities[name]
+        _kw=copy.deepcopy(quant.default)
+        _kw.update(**kw)
+        value = self.performGetValue(quant, **_kw)
+        _kw.update(value=value)
+        log.info('%s    Get Value of CH-%s: %s <-- %s %s' % (datetime.now(),_kw.get('ch'),name,value,_kw.get('unit')))
+        self.config[name][_kw.pop('ch')].update(_kw) # update config
+        return value
 
     def query(self,message,**kw):
         return
@@ -137,17 +152,14 @@ class visaDriver(BaseDriver):
     def performClose(self, **kw):
         self.handle.close()
 
-    def performSetValue(self, quant, value, **kw):
-        quant.set(self,value,**kw)
-
-    def performGetValue(self, quant, **kw):
-        return quant.get(self,**kw)
+    def performOPC(self):
+        opc=int(self.query("*OPC?"))
+        return opc
 
     def set_timeout(self, t):
         self.timeout = t
         if self.handle is not None:
             self.handle.timeout = t * 1000
-        return self
 
     def errors(self):
         """返回错误列表"""
@@ -232,7 +244,6 @@ class visaDriver(BaseDriver):
             raise
         if check_errors:
             self.check_errors_and_log(message)
-        return self
 
     def write_ascii_values(self, message, values, converter='f', separator=',',
                            termination=None, encoding=None, check_errors=False):
@@ -248,7 +259,6 @@ class visaDriver(BaseDriver):
             raise
         if check_errors:
             self.check_errors_and_log(log_msg)
-        return self
 
     def write_binary_values(self, message, values, datatype='f',
                                 is_big_endian=False, termination=None,
@@ -266,7 +276,6 @@ class visaDriver(BaseDriver):
             raise
         if check_errors:
             self.check_errors_and_log(log_msg)
-        return self
 
 
 def IEEE_488_2_BinBlock(datalist, dtype="int16", is_big_endian=True):
